@@ -1,0 +1,254 @@
+---
+title: "Analysis on factors affecting Wildlife"
+author: "Group 01"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE,message = FALSE, echo = FALSE,fig.width=7, fig.height=4)
+```
+
+```{r Loading Libraries}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(corrplot)
+library(gridExtra)
+library(data.table)
+library(scales)
+library(fitdistrplus)
+library(MASS)
+library(gginference)
+```
+
+
+```{r}
+pieall <- read_excel("piechartall.xlsx")
+ggpiec <- ggplot(pieall,aes(x="",y = PercentageC,fill=Types)) + 
+  geom_col(color="black") + coord_polar("y",start=0) + 
+  geom_text(aes(label=paste0(round(PercentageC), "%")),
+            position= position_stack(vjust = 0.5)) + 
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust=0.5,size=9)) + 
+  ggtitle("Critically Endangered Species in 2020") + 
+  scale_fill_manual(values=colors)
+ggpiec <- ggpiec + theme(legend.position="none")
+
+ggpiev <- ggplot(pieall,aes(x="",y = PercentageV,fill=Types)) + 
+  geom_col(color="black") + coord_polar("y",start=0) + 
+  geom_text(aes(label=paste0(round(PercentageV), "%")),
+            position= position_stack(vjust = 0.5)) + 
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust=0.5,size=9)) + 
+  ggtitle("Vulnerable Species in 2020") + 
+  scale_fill_manual(values=colors)
+ggpiev <- ggpiev + theme(legend.position='none')
+
+
+ggpiee <- ggplot(pieall,aes(x="",y = PercentageE,fill=Types)) + 
+  geom_col(color="black") + coord_polar("y",start=0) + 
+  geom_text(aes(label=paste0(round(PercentageE), "%")),
+            position= position_stack(vjust = 0.5)) + 
+  theme(panel.background = element_blank(),
+        axis.line = element_blank(),
+        axis.text = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title = element_blank(),
+        plot.title = element_text(hjust=0.5,size=9)) + 
+  ggtitle("Endangered Species in 2020") + 
+  scale_fill_manual(values=colors)
+ggpiee <- ggpiee + theme(legend.position='none')
+
+grid.arrange(ggpiec,ggpiee,ggpiev,ncol=3)
+```
+
+
+```{r CO2 Emission across continents}
+emissiondata <- read_excel("emission data 1900-2017.xlsx")
+ggplot(emissiondata,aes(x=Year,y=Values,color = Continent)) + geom_line() +facet_wrap(~Continent) + labs(y="Carbon Emission in Tons")
+```
+
+
+```{r Deforestation log plot}
+annual_change_forest_area <- read.table('annual-change-forest-area.csv', header = TRUE, sep = ',') 
+annual_change_forest_area = annual_change_forest_area[annual_change_forest_area$Entity == "World",]
+head(annual_change_forest_area)
+Y_Axis <- annual_change_forest_area$Net.forest.conversion
+X_Axis <- annual_change_forest_area$Year
+reverselog_trans <- function(base = exp(1)) {
+  trans <- function(Y_Axis) -log(Y_Axis, base)
+  inv <- function(Y_Axis) base^(-Y_Axis)
+  trans_new(paste0("reverselog-", format(base)), trans, inv, 
+            log_breaks(base = base), 
+            domain = c(1e-100, Inf))
+}
+
+df<-data.frame(x=X_Axis,y=Y_Axis)
+p <- ggplot(df,aes(x,-y))+geom_point()+
+  scale_y_continuous(trans=reverselog_trans(base=10),
+                     labels=trans_format("identity", function(y) +y)) +
+  geom_line()
+
+
+p + ggtitle("Change in Forest area vs Time (Logarithmically scaled)") +
+  xlab("Year") + ylab("Net forest conversion (Negative Value)")
+```
+```{r Scatter Plot Wildfire}
+final <- read_excel("Final.xlsx")
+w <- final %>% 
+  dplyr::select('Year','Wildfire') %>% 
+  drop_na()
+
+ggw <- ggplot(w, aes(x=Year, y=Wildfire)) + 
+          geom_point()+ geom_smooth(method=lm, se=TRUE) + labs(y="Number of Wildfires")
+ggw
+```
+
+```{r Violin and Box Plot for species}
+final3 <- read_excel("final3species.xlsx")
+
+violin <- ggplot(final3, aes(x=Category, y=Values, color=Category)) + 
+      geom_violin() + geom_boxplot(width=0.3, color="black") + labs(y = "Number of Species")
+
+violin
+```
+The violin box plot above between the three categories of species shows that the number of vulnerable species is the highest followed by endangered and critical species. However, the frequency of critical species is the maximum around the median ranges than endangered and vulnerable. The species that has the highest spread in the data is endangered. 
+```{r Species correlation with other factors}
+speciescor <- read_excel("Final.xlsx")
+
+speciescor1 <- setnames(speciescor,old = c('Critical Species','Vulnerable Species','Endangered Species','co2','Deforestation','Wildfire'), 
+                        new = c('Critical \n Species','Vulnerable \n Species','Endangered \n Species','co2','Deforestation','Wildfire'))
+
+
+speciescorf <- speciescor1 %>% 
+  dplyr::select('Critical \n Species','Vulnerable \n Species','Endangered \n Species','co2','Deforestation','Wildfire') %>% 
+  drop_na()
+cdff <- cor(speciescorf)
+corrf <- corrplot.mixed(cdff, lower.col="black", number.cex=1.2, tl.cex=0.7, cl.cex=0.6) 
+
+```
+
+```{r}
+df1 <- read.csv('Critical.csv', header = TRUE, sep = ',')
+df2 <- read.csv('Vulnerable.csv', header = TRUE, sep = ',')
+df3 <- read.csv('Endangered.csv', header = TRUE, sep = ',')
+
+par(mfrow=c(1,3))
+a<-descdist(df1$TOTAL, discrete=FALSE, boot = 500)
+a
+b<-descdist(df2$TOTAL, discrete=FALSE, boot = 500)
+b
+c<-descdist(df3$TOTAL, discrete=FALSE, boot = 500)
+c
+# get parameter estimates
+# for gamma distribution
+fit_gamma <- fitdist(df2$TOTAL/10, "gamma")
+
+# for normal distribution
+fit_norm <- fitdist(df2$TOTAL, "norm")
+
+# for uniform distribution
+fit_unif <- fitdist(df2$TOTAL, "unif")
+
+# for exponential distribution
+fit_exp <- fitdist(df2$TOTAL/100, "exp")
+
+# for logistic distribution
+fit_logis <- fitdist(df2$TOTAL, "logis")
+
+# for log normal distribution
+fit_lnorm <- fitdist(df1$TOTAL, "lnorm")
+
+# potential best fits of distribution to the continuous variable x
+plot_array = c("norm", "lnorm", "gamma", "logis", "unif")
+# goodness-of-fit plots
+par(mfrow=c(2,2))
+plot.legend <- plot_array[2]
+denscomp(list(fit_lnorm), legendtext = plot.legend, xlab = 'Continuous Variable (x)', xlegend = 'topleft')
+cdfcomp (list(fit_lnorm), legendtext = plot.legend, xlab = 'Continuous Variable (x)')
+qqcomp  (list(fit_lnorm), legendtext = plot.legend, xlab = 'Continuous Variable (x)')
+ppcomp  (list(fit_lnorm), legendtext = plot.legend, xlab = 'Continuous Variable (x)')
+```
+```{r TOH}
+df <- read.csv('Critical.csv', header = TRUE, sep = ',')
+
+mean(df$Mammals)
+mean(df$Plants)
+
+sd(df$Plants)
+sd(df$Plants)
+
+t_test_result <- t.test(df$Plants, df$Mammals)
+
+
+ggttest(t_test_result)
+
+```
+
+
+```{r}
+dff <- read_excel('Final.xlsx')
+
+mean_deforestation <- mean(dff$Deforestation)
+sd_deforestation <- sd(dff$Deforestation)
+
+dfSample <-sample_n(dff, 10)
+
+# if P(X-bar > 16000000)
+Z_value = (16000000 - mean_deforestation)/(sd_deforestation/sqrt(10))
+Z_value
+```
+ 
+```{r}
+dfl <- read.csv('Endangered.csv', header = TRUE, sep = ',')
+head(df)
+
+endangered_pmf <- round(dfl$TOTAL/sum(dfl$TOTAL),3)
+endangered_pmf
+
+
+mean_endangered <- mean(log(dfl$TOTAL))
+sd_endangered <- sd(log(dfl$TOTAL))
+
+range(dfl$TOTAL)
+
+plnorm(q=2500,meanlog=mean_endangered,sdlog=sd_endangered)
+plnorm(q=10000,meanlog=mean_endangered,sdlog=sd_endangered)
+```
+ 
+```{r deforestation vs critical species regression}
+y <- c(12818.45,7762,6413,5826,5583,5210,4894,4631,4282,4084,3875,3561,3321,3242,3120,3071,2853,2249,1978,1939,1820)
+x <- c(28114500,18743000,18321000,17853000,17301000,16575000,15818000,15697000,15614000,15538000,15324000,15117000,14784000,14352000,13826000,13451000,12781000,12425000,11971000,11801000,10150000)
+
+relation <- lm(y~x)
+a <- data.frame(x = 28114500)
+result <-  predict(relation,a)
+
+plot(y,x,col = "blue",main = "Deforestation Area and Critical Species Regression",
+abline(lm(x~y)),cex = 1.3,pch = 16,xlab = "Critical Species",ylab = "Deforestation")
+
+```
+
+```{r Co2 and Critical Species Regression}
+x1<- c(2.37E+12,1.58E+12,	1.54E+12,	1.50E+12,	1.47E+12,	1.43E+12,	1.40E+12,	1.36E+12,	1.33E+12,	1.29E+12,	1.26E+12,	1.23E+12,	1.20E+12,	1.17E+12,	1.14E+12,	1.11E+12,	1.09E+12,	1.06E+12,	1.04E+12,	1.01E+12,	1.01E+12)
+
+y1 <- c(13509.6,7762,6413,5826,5583,5210,4894,4631,4282,4084,3875,3561,3321,3242,3120,3071,2853,2249,1978,1939,1820)
+
+relation1 <- lm(y1~x1)
+
+a1 <- data.frame(x1 = 2.37E+12)
+result1 <-  predict(relation1,a1) 
+
+plot(y1,x1,col = "blue",main = "Co2 and Critical Species Regression",
+abline(lm(x1~y1)),cex = 1.3,pch = 16,xlab = "Critical Species",ylab = "Carbon emission in tonnes")
+```
+
