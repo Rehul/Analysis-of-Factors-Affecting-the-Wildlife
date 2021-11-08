@@ -1,1 +1,2 @@
 # Analysis-of-Factors-Affecting-the-Wildlife
+This project/study aims to analyze the impact our wildlife has faced during the past two decades due to various detrimental factors caused by urbanization and human interference into the wildlife. Hence, probabilistic and statistical techniques were used to develop substantial insights from various datasets like, carbon dioxide (CO2) emission rates, deforestation and wildfires across the globe.
